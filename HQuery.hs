@@ -71,5 +71,5 @@ data Source =
  All | -- Hackage in whole.
  PackageList [PkgName] | -- Get all versions of the packages.
  LatestPackageList [PkgName] | -- Get the latest version of the packages.
- PackageVersionList [(PkgName,VersionRange)] --Package names + versionranges.
+ PackageVersionList [(PkgName,String)] --Package names + versionranges.
                                                 
