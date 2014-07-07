@@ -249,19 +249,28 @@ latestPD vmap = case latestVersion vmap of
   Nothing -> error "This really should not happen..."
   Just gpd -> Just $ (v,flattenPackageDescription gpd)  
 
-getPDs :: [PkgName] -> IO (M.Map PkgName [PackageDescription] )
+
+-- TODO: The type signature should be IO (M.Map PkgName Maybe [PackageDescription] )
+-- as if a packge cant be found on Hackage, the lengths will be screwed.
+
+getPDs :: [PkgName] -> IO (M.Map PkgName (Maybe (M.Map Version PackageDescription)) )
 getPDs pkgs = do
  vmaps <- getVMaps pkgs 
  let pds = map (\vmap -> case vmap of 
-                 Nothing -> Nothing
-                 Just vmap' -> Just $ map flattenPackageDescription (M.elems vmap')) 
+                 Nothing -> Nothing 
+                 Just vmap' -> Just $ M.map 
+                                       (\pd -> (flattenPackageDescription pd)) 
+                                       vmap')
            vmaps
- return $ M.fromList $ zip pkgs (catMaybes pds)
+ return $ M.fromList $ zip pkgs pds
  
-getLatestPDs :: [PkgName] -> IO [(Version,PackageDescription)]
+getLatestPDs :: [PkgName] -> IO [Maybe (Version, PackageDescription)]
 getLatestPDs pkgs = do
  vmaps <- getVMaps pkgs
- return $ catMaybes $ map latestPD (catMaybes vmaps)
+ return $ map 
+   (\vm -> case vm of Just v -> latestPD v
+                      Nothing -> Nothing) 
+   vmaps
 
 -- Takes a VMap and a version range string and returns all package descriptions
 -- from the VMap where the version is in range.
@@ -328,8 +337,8 @@ readVersion s = case readP_to_S DB.parseVersion s of
 
 getModuleLocations :: String -> [Version] -> Maybe VMap -> M.Map Version [FilePath]
 getModuleLocations pkg vs vmap = case vmap of
- Nothing    -> M.empty
  Just vmap' -> generateModuleLocations $ findModules vs vmap'
+ Nothing    -> M.empty
 
 findModules :: [Version] -> VMap -> [(Version,[ModuleName])]
 findModules vlist vmap = map (\v -> (v,findVersionModules v vmap)) vlist
